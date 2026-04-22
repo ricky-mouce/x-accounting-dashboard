@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>経理 X トレンド分析 | 2026-04-21</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    /* ===== Design Tokens ===== */
+    :root {
+      --clr-bg: #0f172a;
+      --clr-surface: #1e293b;
+      --clr-surface2: #273549;
+      --clr-border: #334155;
+      --clr-primary: #38bdf8;
+      --clr-primary-dim: #0ea5e9;
+      --clr-accent: #818cf8;
+      --clr-success: #34d399;
+      --clr-warning: #fbbf24;
+      --clr-danger: #f87171;
+      --clr-text: #f1f5f9;
+      --clr-text-muted: #94a3b8;
+      --radius: 12px;
+      --shadow: 0 4px 24px rgba(0,0,0,.4);
+      --font: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+    }
+
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    a { color: var(--clr-primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ===== Layout ===== */
+    .page-wrapper { max-width: 1200px; margin: 0 auto; padding: 24px 16px 64px; }
+
+    /* ===== Header ===== */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--clr-border);
+      margin-bottom: 32px;
+    }
+    .header-left h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--clr-primary);
+      letter-spacing: .02em;
+    }
+    .header-left p { font-size: .85rem; color: var(--clr-text-muted); margin-top: 4px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--clr-surface2);
+      border: 1px solid var(--clr-border);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: .8rem;
+      color: var(--clr-text-muted);
+    }
+    .badge .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--clr-success);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; }
+      50%      { opacity:.3; }
+    }
+
+    /* ===== Source badge ===== */
+    .source-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, #1e293b, #273549);
+      border: 1px solid var(--clr-primary);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: .78rem;
+      color: var(--clr-primary);
+      font-weight: 600;
+    }
+
+    /* ===== KPI Cards ===== */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .kpi-card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .kpi-card.blue::before   { background: var(--clr-primary); }
+    .kpi-card.purple::before { background: var(--clr-accent); }
+    .kpi-card.green::before  { background: var(--clr-success); }
+    .kpi-card.yellow::before { background: var(--clr-warning); }
+    .kpi-label { font-size: .78rem; color: var(--clr-text-muted); text-transform: uppercase; letter-spacing: .06em; }
+    .kpi-value { font-size: 2rem; font-weight: 700; margin-top: 6px; }
+    .kpi-value.small { font-size: 1.1rem; line-height: 1.4; margin-top: 8px; }
+    .kpi-sub   { font-size: .8rem; color: var(--clr-text-muted); margin-top: 4px; }
+
+    /* ===== Summary Card ===== */
+    .summary-card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-left: 4px solid var(--clr-primary);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 32px;
+    }
+    .summary-card .summary-title {
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--clr-primary);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 10px;
+    }
+    .summary-card p { font-size: .95rem; line-height: 1.7; color: var(--clr-text); }
+
+    /* ===== Charts Grid ===== */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .card-title {
+      font-size: .95rem;
+      font-weight: 600;
+      color: var(--clr-text);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title .icon { font-size: 1.1rem; }
+    canvas { max-height: 260px; }
+
+    /* ===== Topic Cards ===== */
+    .section-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .topics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .topic-card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .topic-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .topic-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .rank-badge {
+      background: linear-gradient(135deg, var(--clr-primary), var(--clr-accent));
+      color: #fff;
+      font-weight: 700;
+      font-size: .78rem;
+      padding: 3px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .topic-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--clr-text);
+      flex: 1;
+      line-height: 1.4;
+    }
+    .trend-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: .75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .trend-high   { background: rgba(248,113,113,.15); color: var(--clr-danger); border: 1px solid rgba(248,113,113,.4); }
+    .trend-mid    { background: rgba(251,191,36,.15);  color: var(--clr-warning); border: 1px solid rgba(251,191,36,.4); }
+    .trend-low    { background: rgba(52,211,153,.15);  color: var(--clr-success); border: 1px solid rgba(52,211,153,.4); }
+    .topic-summary { font-size: .88rem; line-height: 1.6; color: var(--clr-text-muted); margin-bottom: 12px; }
+    .topic-keywords { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .keyword-tag {
+      background: var(--clr-surface2);
+      border: 1px solid var(--clr-border);
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: .75rem;
+      color: var(--clr-text-muted);
+    }
+    .topic-example {
+      font-size: .82rem;
+      color: var(--clr-text-muted);
+      border-left: 3px solid var(--clr-border);
+      padding-left: 10px;
+      margin-top: 10px;
+      line-height: 1.6;
+      font-style: italic;
+    }
+
+    /* ===== Tweet Table (X API mode) ===== */
+    .tweet-section { margin-bottom: 32px; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .filter-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filter-tab {
+      background: var(--clr-surface2);
+      border: 1px solid var(--clr-border);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: .8rem;
+      cursor: pointer;
+      transition: all .15s;
+      color: var(--clr-text-muted);
+      font-family: inherit;
+    }
+    .filter-tab.active, .filter-tab:hover {
+      background: var(--clr-primary-dim);
+      border-color: var(--clr-primary);
+      color: #fff;
+    }
+    .tweet-table-wrapper { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: .75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--clr-text-muted);
+      border-bottom: 1px solid var(--clr-border);
+      white-space: nowrap;
+      user-select: none;
+    }
+    th.sortable { cursor: pointer; }
+    th.sortable:hover { color: var(--clr-primary); }
+    th.sort-active { color: var(--clr-primary); }
+    th .sort-icon { margin-left: 4px; }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--clr-border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--clr-surface2); }
+    .tweet-text { max-width: 420px; line-height: 1.5; }
+    .metric-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--clr-surface2);
+      border-radius: 999px;
+      padding: 2px 9px;
+      font-size: .8rem;
+      white-space: nowrap;
+    }
+    .score-bar-wrapper { display: flex; align-items: center; gap: 8px; min-width: 100px; }
+    .score-bar { flex: 1; height: 6px; background: var(--clr-border); border-radius: 3px; overflow: hidden; }
+    .score-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--clr-primary), var(--clr-accent));
+      border-radius: 3px;
+      transition: width .6s ease;
+    }
+    .score-val { font-size: .8rem; color: var(--clr-text-muted); min-width: 30px; text-align: right; }
+    .empty-state { text-align: center; padding: 48px 16px; color: var(--clr-text-muted); }
+    .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .search-box {
+      background: var(--clr-surface2);
+      border: 1px solid var(--clr-border);
+      border-radius: 8px;
+      padding: 7px 12px;
+      color: var(--clr-text);
+      font-size: .88rem;
+      width: 220px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .search-box:focus { border-color: var(--clr-primary); }
+    .search-box::placeholder { color: var(--clr-text-muted); }
+
+    /* ===== Spotlight (X API mode top3) ===== */
+    .spotlight-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .spotlight-card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .spotlight-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .spotlight-text { font-size: .9rem; line-height: 1.6; margin: 12px 0; color: var(--clr-text); }
+    .spotlight-metrics { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    /* ===== Footer ===== */
+    footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--clr-border);
+      text-align: center;
+      font-size: .78rem;
+      color: var(--clr-text-muted);
+    }
+
+    /* ===== Pagination ===== */
+    .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+    .page-btn {
+      background: var(--clr-surface2);
+      border: 1px solid var(--clr-border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: .8rem;
+      cursor: pointer;
+      color: var(--clr-text-muted);
+      transition: all .15s;
+    }
+    .page-btn.active, .page-btn:hover { background: var(--clr-primary-dim); border-color: var(--clr-primary); color: #fff; }
+    .page-btn:disabled { opacity: .4; pointer-events: none; }
+
+    @media (max-width: 600px) {
+      .kpi-value { font-size: 1.5rem; }
+      .tweet-text { max-width: 260px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrapper">
+
+  <!-- Header -->
+  <header>
+    <div class="header-left">
+      <h1>📊 経理 X トレンド分析</h1>
+      
+      <p>対象日: 2026-04-21 ／ トレンドトピック 5 件（参照投稿 0 件概算）</p>
+      
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      
+      <div class="source-badge">⚡ Grok X Search</div>
+      
+      <div class="badge">
+        <span class="dot"></span>
+        2026/04/22 13:07 JST 更新
+      </div>
+    </div>
+  </header>
+
+  
+  <!-- ============================================================ -->
+  <!-- Grok モード -->
+  <!-- ============================================================ -->
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card blue">
+      <div class="kpi-label">トレンドトピック数</div>
+      <div class="kpi-value">5</div>
+      <div class="kpi-sub">Grok が抽出した注目テーマ</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">参照投稿数（概算）</div>
+      <div class="kpi-value">0</div>
+      <div class="kpi-sub">X Search で収集した投稿</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">分析対象日</div>
+      <div class="kpi-value small">2026-04-21</div>
+      <div class="kpi-sub">前日の経理・会計トレンド</div>
+    </div>
+    <div class="kpi-card yellow">
+      <div class="kpi-label">データソース</div>
+      <div class="kpi-value small">Grok API</div>
+      <div class="kpi-sub">xAI X Search ツール使用</div>
+    </div>
+  </div>
+
+  <!-- Overall Summary -->
+  
+  <div class="summary-card">
+    <div class="summary-title">📝 昨日の経理界隈 全体サマリー</div>
+    <p>昨日はインボイス・電子帳簿保存関連の制度改正とクラウドツール活用が主な話題。確定申告シーズン後で実務効率化のTips共有が活発だが、全体ボリューム低調。</p>
+  </div>
+  
+
+  <!-- Topics TOP 3 -->
+  
+  <div class="section-title">🏆 注目トレンド TOP 3</div>
+  <div class="topics-grid">
+  
+  
+    <div class="topic-card">
+      <div class="topic-card-header">
+        <div style="flex:1">
+          <div class="rank-badge" style="display:inline-flex;margin-bottom:8px;">🥇 1位</div>
+          <div class="topic-title">インボイス制度更新</div>
+        </div>
+        
+        <span class="trend-pill trend-low">💡 低</span>
+        
+      </div>
+      <p class="topic-summary">インボイス制度の最新改正点が議論され、対応策が共有されている。freeeユーザーからの実務Tipsが注目。</p>
+      
+      <div class="topic-keywords">
+        
+        <span class="keyword-tag"># インボイス</span>
+        
+        <span class="keyword-tag"># freee</span>
+        
+        <span class="keyword-tag"># 改正</span>
+        
+      </div>
+      
+      
+      <div class="topic-example">インボイス改正で登録事業者の義務が変わる。freeeの新機能で自動対応可能。</div>
+      
+    </div>
+  
+    <div class="topic-card">
+      <div class="topic-card-header">
+        <div style="flex:1">
+          <div class="rank-badge" style="display:inline-flex;margin-bottom:8px;">🥈 2位</div>
+          <div class="topic-title">電子帳簿保存法</div>
+        </div>
+        
+        <span class="trend-pill trend-low">💡 低</span>
+        
+      </div>
+      <p class="topic-summary">電子帳簿保存の導入事例が増え、クラウドツールの活用法がトレンド。コンプライアンス強化の動き。</p>
+      
+      <div class="topic-keywords">
+        
+        <span class="keyword-tag"># 電子帳簿保存</span>
+        
+        <span class="keyword-tag"># クラウド</span>
+        
+        <span class="keyword-tag"># freee</span>
+        
+      </div>
+      
+      
+      <div class="topic-example">電子帳簿保存法対応でマネーフォワード導入。仕訳効率化のコツを共有。</div>
+      
+    </div>
+  
+    <div class="topic-card">
+      <div class="topic-card-header">
+        <div style="flex:1">
+          <div class="rank-badge" style="display:inline-flex;margin-bottom:8px;">🥉 3位</div>
+          <div class="topic-title">確定申告ツール比較</div>
+        </div>
+        
+        <span class="trend-pill trend-low">💡 低</span>
+        
+      </div>
+      <p class="topic-summary">freee vs マネーフォワード vs 弥生の比較投稿が多く、個人事業主の選択肢として人気。</p>
+      
+      <div class="topic-keywords">
+        
+        <span class="keyword-tag"># 確定申告</span>
+        
+        <span class="keyword-tag"># freee</span>
+        
+        <span class="keyword-tag"># マネーフォワード</span>
+        
+      </div>
+      
+      
+      <div class="topic-example">2026確定申告でfreeeが最強。インボイス連携抜群。</div>
+      
+    </div>
+  
+  </div>
+
+  <!-- All Topics List -->
+  
+  <div class="section-title" style="margin-top:8px;">📋 全トレンドトピック一覧</div>
+  <div class="topics-grid">
+  
+    <div class="topic-card">
+      <div class="topic-card-header">
+        <div style="flex:1">
+          <div class="rank-badge" style="display:inline-flex;margin-bottom:8px;">4位</div>
+          <div class="topic-title">仕訳自動化Tips</div>
+        </div>
+        
+        <span class="trend-pill trend-low">💡 低</span>
+        
+      </div>
+      <p class="topic-summary">AI仕訳ツールの活用法が共有され、経理効率化のノウハウが活発に議論。</p>
+      
+      <div class="topic-keywords">
+        
+        <span class="keyword-tag"># 仕訳</span>
+        
+        <span class="keyword-tag"># 自動化</span>
+        
+        <span class="keyword-tag"># AI</span>
+        
+      </div>
+      
+      
+      <div class="topic-example">弥生会計のAI仕訳で1時間短縮。実例紹介。</div>
+      
+    </div>
+  
+    <div class="topic-card">
+      <div class="topic-card-header">
+        <div style="flex:1">
+          <div class="rank-badge" style="display:inline-flex;margin-bottom:8px;">5位</div>
+          <div class="topic-title">決算期対策</div>
+        </div>
+        
+        <span class="trend-pill trend-low">💡 低</span>
+        
+      </div>
+      <p class="topic-summary">決算前のチェックリスト共有が目立ち、財務諸表作成のベストプラクティスがトレンド。</p>
+      
+      <div class="topic-keywords">
+        
+        <span class="keyword-tag"># 決算</span>
+        
+        <span class="keyword-tag"># 財務</span>
+        
+        <span class="keyword-tag"># チェックリスト</span>
+        
+      </div>
+      
+      
+      <div class="topic-example">決算期の財務分析テンプレ公開。エクセルfreee連携。</div>
+      
+    </div>
+  
+  </div>
+  
+  
+
+  
+
+  <footer>
+    経理 X トレンド分析ダッシュボード ／ 自動生成 by X Accounting Bot<br>
+    
+    データソース: Grok API (xAI) × X Search ／ 投稿案生成: Gemini
+    
+  </footer>
+</div>
+
+<script>
+const FETCH_MODE = "grok";
+
+
+</script>
+</body>
+</html>
