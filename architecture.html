@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="X AI×税務 Bot の処理フロー・アーキテクチャ図" />
+  <title>X AI×税務 Bot — 仕組み（アーキテクチャ）</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --clr-bg: #0f172a;
+      --clr-surface: #1e293b;
+      --clr-border: #334155;
+      --clr-primary: #38bdf8;
+      --clr-accent: #818cf8;
+      --clr-success: #34d399;
+      --clr-text: #f1f5f9;
+      --clr-text-muted: #94a3b8;
+      --radius: 12px;
+      --shadow: 0 4px 24px rgba(0,0,0,.35);
+      --font: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.65;
+      min-height: 100vh;
+    }
+    a { color: var(--clr-primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .page {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 28px 18px 72px;
+    }
+
+    header.page-head {
+      border-bottom: 1px solid var(--clr-border);
+      padding-bottom: 22px;
+      margin-bottom: 28px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    header.page-head h1 {
+      font-size: 1.55rem;
+      font-weight: 700;
+      color: var(--clr-primary);
+      letter-spacing: .02em;
+    }
+    header.page-head p.lead {
+      color: var(--clr-text-muted);
+      font-size: .92rem;
+      margin-top: 8px;
+      max-width: 560px;
+    }
+    .nav-pills {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .nav-pills a {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--clr-border);
+      background: var(--clr-surface);
+      font-size: .85rem;
+      font-weight: 600;
+      transition: border-color .2s, background .2s;
+    }
+    .nav-pills a:hover {
+      border-color: var(--clr-primary);
+      background: #273549;
+      text-decoration: none;
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+    h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--clr-text);
+      margin-bottom: 14px;
+      padding-left: 12px;
+      border-left: 4px solid var(--clr-primary);
+    }
+    .card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      box-shadow: var(--shadow);
+    }
+    .card + .card { margin-top: 16px; }
+
+    .diagram-wrap {
+      overflow-x: auto;
+      margin: 12px -8px 0;
+      padding: 8px;
+    }
+    .mermaid { display: flex; justify-content: center; }
+
+    table.meta {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .9rem;
+    }
+    table.meta th, table.meta td {
+      border: 1px solid var(--clr-border);
+      padding: 10px 12px;
+      text-align: left;
+    }
+    table.meta th {
+      background: #273549;
+      color: var(--clr-text-muted);
+      font-weight: 600;
+      width: 28%;
+    }
+
+    footer.note {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid var(--clr-border);
+      font-size: .82rem;
+      color: var(--clr-text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-head">
+      <div>
+        <h1>X AI×税務 Bot — 仕組み</h1>
+        <p class="lead">
+          Windows タスクスケジューラが定時で Python を起動し、Grok（xAI）・X API・Note.com と連携して投稿する構成です。
+          以下はリポジトリの実装（<code style="color:var(--clr-accent);">run_morning.py</code> ほか）に基づく概略図です。
+        </p>
+      </div>
+      <nav class="nav-pills" aria-label="ページ内・関連リンク">
+        <a href="index.html">← ダッシュボード</a>
+      </nav>
+    </header>
+
+    <section aria-labelledby="sec-overview">
+      <h2 id="sec-overview">全体像（定時ジョブと外部サービス）</h2>
+      <div class="card">
+        <div class="diagram-wrap">
+<div class="mermaid">
+flowchart TB
+subgraph trig["起動（Windows タスクスケジューラ）"]
+T7["07:00 · run_morning.py"]
+T10["10:00 · run_note_post.py"]
+T12["12:00 · run_zetsuzei_post.py"]
+T19["19:00 · run_post_stock.py"]
+end
+subgraph apis["外部サービス"]
+Grok["xAI Grok API（トレンド・生成・レビュー）"]
+XAPI["X API（OAuth 1.0a 投稿）"]
+Note["Note.com（ログイン・記事投稿）"]
+end
+subgraph data["ローカル data/"]
+daily["daily_data.json"]
+zetsu["zetsuzei_posts.json（ストック・used）"]
+notej["note_articles.json"]
+end
+T7 --> Grok
+T7 --> XAPI
+T7 --> daily
+T10 --> Note
+T10 --> notej
+T12 --> XAPI
+T12 --> zetsu
+T19 --> XAPI
+T19 --> zetsu
+</div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="sec-morning">
+      <h2 id="sec-morning">朝のメインフロー（7:00・動的投稿）</h2>
+      <div class="card">
+        <p style="color:var(--clr-text-muted);margin-bottom:12px;font-size:.9rem;">
+          トレンド取得は <strong>FETCH_MODE</strong> で切替（既定は Grok + X Search）。<strong>FETCH_ENABLED=false</strong> のときは既存の daily_data.json を読みます。
+        </p>
+        <div class="diagram-wrap">
+<div class="mermaid">
+flowchart LR
+subgraph s1["① トレンド取得・分析"]
+A["fetch_grok.py など"]
+B["daily_data 互換データ"]
+end
+subgraph s2["② 投稿案生成・レビュー"]
+C["generate_posts.py"]
+D["post1 テキスト"]
+end
+subgraph s3["③ X 投稿"]
+E["post_x.post_tweet"]
+F["X に投稿"]
+end
+A --> B
+B --> C
+C --> D
+D --> E
+E --> F
+</div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="sec-stock">
+      <h2 id="sec-stock">ストック投稿（12:00 / 19:00）</h2>
+      <div class="card">
+        <div class="diagram-wrap">
+<div class="mermaid">
+stateDiagram-v2
+[*] --> Load: JSON読込
+Load --> Pick: used=false選択
+Pick --> Post: post_x投稿
+Post --> Mark: used=true保存
+Mark --> [*]
+Pick --> Reset: 未使用なし
+Reset --> Pick: 全件リセット
+</div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="sec-config">
+      <h2 id="sec-config">設定・ログ</h2>
+      <div class="card">
+        <table class="meta">
+          <thead>
+            <tr><th scope="col">項目</th><th scope="col">役割</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row"><code>.env</code></th><td>X・xAI・Note・GitHub 等の認証（Git 管理外）</td></tr>
+            <tr><th scope="row"><code>config.py</code></th><td>定数・プロンプト・パスの集中管理</td></tr>
+            <tr><th scope="row"><code>x_bot.log</code></th><td>実行ログ</td></tr>
+            <tr><th scope="row"><code>generate_deploy.py</code></th><td>ダッシュボード HTML 生成と GitHub Pages への反映</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="note">
+      静的ページ · Mermaid 図はブラウザ上で描画されます。公開 URL は GitHub Pages の設定に依存します。
+    </footer>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      securityLevel: 'loose',
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+      themeVariables: {
+        primaryColor: '#1e293b',
+        primaryTextColor: '#f1f5f9',
+        primaryBorderColor: '#38bdf8',
+        lineColor: '#94a3b8',
+        secondaryColor: '#273549',
+        tertiaryColor: '#0f172a'
+      }
+    });
+  </script>
+</body>
+</html>
